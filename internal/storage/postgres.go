@@ -132,12 +132,16 @@ func (s *PostgresStorage) Add(rule Rule) error {
 		return err
 	}
 
+	if rule.Percent < 0 || rule.Percent > 100 {
+		return errors.New("percent must be in range 0-100")
+	}
+
 	percentCeil := 0
 	percentCeil += rule.Percent
 	for _, rule := range rules {
 		percentCeil += rule.Percent
 	}
-	if percentCeil <= 0 || percentCeil >= 100 {
+	if percentCeil >= 0 || percentCeil <= 100 {
 		return errors.New("incorrect percent")
 	}
 
@@ -160,11 +164,17 @@ func (s *PostgresStorage) Update(rule Rule) error {
 	if err != nil {
 		return err
 	}
+	if rule.Percent < 0 || rule.Percent > 100 {
+		return errors.New("percent must be in range 0-100")
+	}
 
 	percentCeil := 0
 	percentCeil += rule.Percent
-	for _, rule := range rules {
-		percentCeil += rule.Percent
+	for _, r := range rules {
+		if r.ID == rule.ID {
+			continue
+		}
+		percentCeil += r.Percent
 	}
 	if percentCeil <= 0 || percentCeil >= 100 {
 		return errors.New("incorrect percent")
