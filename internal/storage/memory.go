@@ -13,8 +13,8 @@ type MemoryStorage struct {
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
 		rules: []Rule{
-			{ID: uuid.New(), Name: "Test Feature", Percent: 50},
-			{ID: uuid.New(), Name: "New Design", Percent: 50},
+			{ID: uuid.New(), Name: "Test Feature", Backend: "http://localhost:8080", Percent: 50},
+			{ID: uuid.New(), Name: "New Design", Backend: "http://localhost:8081", Percent: 50},
 		},
 	}
 }

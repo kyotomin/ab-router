@@ -6,7 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/kyotomin/ab-router/internal/admin"
 	"github.com/kyotomin/ab-router/internal/config"
+	"github.com/kyotomin/ab-router/internal/router"
 	"github.com/kyotomin/ab-router/internal/storage"
 )
 
@@ -40,7 +42,7 @@ func New(cfg *config.Config) *App {
 		slog.Info("Connected to PostgreSQL")
 	}
 
-	routerServer := router.NewServer()
+	routerServer := router.NewServer(store)
 	adminServer := admin.NewServer(store)
 
 	return &App{

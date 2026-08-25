@@ -86,7 +86,7 @@ func runMigrations(migrateConnString string) error {
 func (s *PostgresStorage) GetAll() ([]Rule, error) {
 	rows, err := s.pool.Query(
 		context.Background(),
-		`SELECT id, name, percent FROM rules ORDER BY name`,
+		`SELECT id, name, backend, percent FROM rules ORDER BY name`,
 	)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (s *PostgresStorage) GetAll() ([]Rule, error) {
 	for rows.Next() {
 		var rule Rule
 
-		if err := rows.Scan(&rule.ID, &rule.Name, &rule.Percent); err != nil {
+		if err := rows.Scan(&rule.ID, &rule.Name, &rule.Backend, &rule.Percent); err != nil {
 			return nil, err
 		}
 		rules = append(rules, rule)
@@ -110,11 +110,11 @@ func (s *PostgresStorage) GetByID(id uuid.UUID) (*Rule, error) {
 	var r Rule
 	err := s.pool.QueryRow(
 		context.Background(),
-		`SELECT id, name, percent
+		`SELECT id, name, backend, percent
 		FROM rules
 		WHERE id = $1`,
 		id,
-	).Scan(&r.ID, &r.Name, &r.Percent)
+	).Scan(&r.ID, &r.Name, &r.Backend, &r.Percent)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -127,13 +127,28 @@ func (s *PostgresStorage) GetByID(id uuid.UUID) (*Rule, error) {
 }
 
 func (s *PostgresStorage) Add(rule Rule) error {
-	_, err := s.pool.Exec(
+	rules, err := s.GetAll()
+	if err != nil {
+		return err
+	}
+
+	percentCeil := 0
+	percentCeil += rule.Percent
+	for _, rule := range rules {
+		percentCeil += rule.Percent
+	}
+	if percentCeil <= 0 || percentCeil >= 100 {
+		return errors.New("incorrect percent")
+	}
+
+	_, err = s.pool.Exec(
 		context.Background(),
 		`INSERT INTO rules
-		(id, name, percent)
-		VALUES ($1, $2, $3)`,
+		(id, name, backend, percent)
+		VALUES ($1, $2, $3, $4)`,
 		rule.ID,
 		rule.Name,
+		rule.Backend,
 		rule.Percent,
 	)
 
@@ -141,12 +156,27 @@ func (s *PostgresStorage) Add(rule Rule) error {
 }
 
 func (s *PostgresStorage) Update(rule Rule) error {
+	rules, err := s.GetAll()
+	if err != nil {
+		return err
+	}
+
+	percentCeil := 0
+	percentCeil += rule.Percent
+	for _, rule := range rules {
+		percentCeil += rule.Percent
+	}
+	if percentCeil <= 0 || percentCeil >= 100 {
+		return errors.New("incorrect percent")
+	}
+
 	res, err := s.pool.Exec(
 		context.Background(),
 		`UPDATE rules SET
-		name = $1, percent = $2, updated_at = NOW()
-		WHERE id = $3`,
+		name = $1, backend = $2 percent = $3, updated_at = NOW()
+		WHERE id = $4`,
 		rule.Name,
+		rule.Backend,
 		rule.Percent,
 		rule.ID,
 	)

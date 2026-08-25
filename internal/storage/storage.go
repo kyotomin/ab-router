@@ -9,6 +9,7 @@ import (
 type Rule struct {
 	ID      uuid.UUID `json:"id"`
 	Name    string    `json:"name"`
+	Backend string    `json:"backend"`
 	Percent int       `json:"percent"`
 }
 
