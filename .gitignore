@@ -1,0 +1,29 @@
+# Binaries and build output
+/bin/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go tools and coverage
+vendor/
+coverage.out
+coverage.html
+
+go.work
+
+# Environment and local config
+.env
+.env.*
+!.env.example
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
