@@ -93,7 +93,7 @@ func (s *PostgresStorage) GetAll() ([]Rule, error) {
 	}
 	defer rows.Close()
 
-	var rules []Rules
+	var rules []Rule
 	for rows.Next() {
 		var rule Rule
 

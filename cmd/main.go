@@ -1,23 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"net/http"
+
+	"github.com/kyotomin/ab-router/internal/app"
+	"github.com/kyotomin/ab-router/internal/config"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello"))
-	})
+	cfg := config.MustLoad()
 
-	go func() {
-		if err := http.ListenAndServe(":8080", mux); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	app := app.New(cfg)
 
-	if err := http.ListenAndServe(":8081", mux); err != nil {
+	fmt.Println("launching app...")
+	if err := app.Run(cfg); err != nil {
 		log.Fatal(err)
 	}
 }
