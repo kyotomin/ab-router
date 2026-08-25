@@ -2,10 +2,13 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kyotomin/ab-router/migrations"
 )
@@ -47,14 +50,14 @@ func NewPostgresStorage(connString, migrateConnString string, retries int) (*Pos
 
 	store := &PostgresStorage{pool: pool}
 
-	if err := run_migrations(migrateConnString); err != nil {
+	if err := runMigrations(migrateConnString); err != nil {
 		return nil, err
 	}
 
 	return store, nil
 }
 
-func run_migrations(migrateConnString string) error {
+func runMigrations(migrateConnString string) error {
 	src, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		slog.Error(
@@ -75,6 +78,101 @@ func run_migrations(migrateConnString string) error {
 			"error", err,
 		)
 		return err
+	}
+
+	return nil
+}
+
+func (s *PostgresStorage) GetAll() ([]Rule, error) {
+	rows, err := s.pool.Query(
+		context.Background(),
+		`SELECT id, name, percent FROM rules ORDER BY name`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rules []Rules
+	for rows.Next() {
+		var rule Rule
+
+		if err := rows.Scan(&rule.ID, &rule.Name, &rule.Percent); err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+
+	return rules, nil
+}
+
+func (s *PostgresStorage) GetByID(id uuid.UUID) (*Rule, error) {
+	var r Rule
+	err := s.pool.QueryRow(
+		context.Background(),
+		`SELECT id, name, percent
+		FROM rules
+		WHERE id = $1`,
+		id,
+	).Scan(&r.ID, &r.Name, &r.Percent)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NotFoundErr
+		}
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+func (s *PostgresStorage) Add(rule Rule) error {
+	_, err := s.pool.Exec(
+		context.Background(),
+		`INSERT INTO rules
+		(id, name, percent)
+		VALUES ($1, $2, $3)`,
+		rule.ID,
+		rule.Name,
+		rule.Percent,
+	)
+
+	return err
+}
+
+func (s *PostgresStorage) Update(rule Rule) error {
+	res, err := s.pool.Exec(
+		context.Background(),
+		`UPDATE rules SET
+		name = $1, percent = $2, updated_at = NOW()
+		WHERE id = $3`,
+		rule.Name,
+		rule.Percent,
+		rule.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return NotFoundErr
+	}
+
+	return nil
+}
+
+func (s *PostgresStorage) Delete(id uuid.UUID) error {
+	res, err := s.pool.Exec(
+		context.Background(),
+		`DELETE FROM rules WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return NotFoundErr
 	}
 
 	return nil

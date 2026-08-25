@@ -1,1 +1,1 @@
-DROP TABLE rules;
+DROP TABLE IF EXISTS rules;
